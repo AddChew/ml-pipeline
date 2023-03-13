@@ -1,7 +1,12 @@
 import pandas as pd
+from easydict import EasyDict
 from typing import Union, List
 from dataclasses import dataclass
 from abc import ABC, abstractmethod
+
+
+class ObjectStore(EasyDict):
+    pass
 
 
 class Output:
@@ -66,14 +71,18 @@ class Pipeline:
     
 
 @dataclass
-class ReadFeaEngTable(Step): # TODO: Move to operation then create object store?
+class ReadFeaEngTable(Step):
     sql: str
+    objectstore: ObjectStore
 
-    # TODO: find some way to save XY_sg and XY_ospl to a global object store
     def transform(self, XY: pd.DataFrame, feature_dict: dict, *args, **kwargs):
         XY_ospl = pd.DataFrame()
         XY_sg = pd.DataFrame({'a': [4, 5, 6], 'b': [9, 10, 11]})
-        return XY, feature_dict, XY_sg, XY_ospl
+        self.objectstore.update({
+            'XY_ospl': XY_ospl,
+            'XY_sg': XY_sg
+        })
+        return XY, feature_dict
     
 
 @dataclass
@@ -85,12 +94,13 @@ class AddNumber(Step):
 
 
 @dataclass
-class SaveToFeaEngTable(Step): # TODO: Move to operation then create object store?
+class SaveToFeaEngTable(Step):
     path: str
+    objectstore: ObjectStore
 
-    def transform(self, XY: pd.DataFrame, feature_dict: dict = None, 
-                  XY_sg: pd.DataFrame = None, XY_ospl: pd.DataFrame = None, 
-                  *args, **kwargs):
+    def transform(self, XY: pd.DataFrame, feature_dict: dict = None, *args, **kwargs):
+        XY_sg = self.objectstore.pop('XY_sg')
+        XY_ospl = self.objectstore.pop('XY_ospl')
         return pd.concat([XY, XY_sg, XY_ospl], ignore_index = True), feature_dict
 
 
@@ -99,15 +109,14 @@ if __name__ == '__main__':
     feature_dict = {
         'features': []
     }
-
+    objectstore = ObjectStore()
     out = Pipeline(ops = [
         Operation(steps = [
-            ReadFeaEngTable(sql = "sql"),
+            ReadFeaEngTable(sql = "sql", objectstore = objectstore),
             AddNumber(1),
             AddNumber(2),
-            SaveToFeaEngTable(path = "path"),
+            SaveToFeaEngTable(path = "path", objectstore = objectstore),
             AddNumber(1),
         ]),
     ]).fit(XY, feature_dict)
-
     print(out)
