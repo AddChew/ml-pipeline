@@ -66,9 +66,10 @@ class Pipeline:
     
 
 @dataclass
-class ReadFeaEngTable(Step):
+class ReadFeaEngTable(Step): # TODO: Move to operation then create object store?
     sql: str
 
+    # TODO: find some way to save XY_sg and XY_ospl to a global object store
     def transform(self, XY: pd.DataFrame, feature_dict: dict, *args, **kwargs):
         XY_ospl = pd.DataFrame()
         XY_sg = pd.DataFrame({'a': [4, 5, 6], 'b': [9, 10, 11]})
@@ -84,7 +85,7 @@ class AddNumber(Step):
 
 
 @dataclass
-class SaveToFeaEngTable(Step):
+class SaveToFeaEngTable(Step): # TODO: Move to operation then create object store?
     path: str
 
     def transform(self, XY: pd.DataFrame, feature_dict: dict = None, 
